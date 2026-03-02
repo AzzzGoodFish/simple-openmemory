@@ -5,13 +5,6 @@ import crypto from "crypto"
 
 const MEMORY_ROOT = path.join(os.homedir(), ".memory")
 
-const LOG_FILE = path.join(MEMORY_ROOT, "debug.log")
-
-function log(msg) {
-  const line = `[${new Date().toISOString()}] ${msg}\n`
-  fs.appendFile(LOG_FILE, line).catch(() => {})
-}
-
 /** @type {import("@opencode-ai/plugin").Plugin} */
 export default async (input) => {
   await fs.mkdir(MEMORY_ROOT, { recursive: true })
@@ -28,13 +21,10 @@ export default async (input) => {
     fs.writeFile(memoryMdPath, "")
   )
 
-  log(`plugin loaded, directory=${input.directory} worktree=${input.worktree} memoryDir=${memoryDir}`)
-
   return {
     "experimental.chat.system.transform": async (_input, output) => {
       const memoryMd = await readMemoryMd(memoryDir)
       output.system.push(buildSystemPrompt(memoryDir, memoryMd))
-      log(`system.transform injected, memoryMd=${memoryMd ? "yes" : "empty"}`)
     },
   }
 }

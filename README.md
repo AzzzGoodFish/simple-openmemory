@@ -41,7 +41,6 @@ Or load from a local path during development:
 
 ```
 ~/.memory/
-├── debug.log              # plugin debug log
 ├── a1b2c3d4e5f6/          # project directory (hash of project path)
 │   ├── .project           # plain text — maps hash back to original path
 │   ├── MEMORY.md          # main memory file (auto-loaded each session)
