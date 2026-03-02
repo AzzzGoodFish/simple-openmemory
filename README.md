@@ -17,6 +17,18 @@ The agent uses its normal file read/write tools to manage memory files — no sp
 
 ## Install
 
+### One-click (let your agent do it)
+
+Paste this link into your OpenCode or Claude Code session:
+
+```
+https://raw.githubusercontent.com/AzzzGoodFish/simple-openmemory/main/install.md
+```
+
+The agent will auto-detect your environment, install the plugin, and optionally add enhanced memory rules.
+
+### Manual
+
 Add the plugin to your OpenCode config (`~/.config/opencode/opencode.json`):
 
 ```json
