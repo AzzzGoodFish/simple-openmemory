@@ -1,0 +1,16 @@
+{
+  "name": "simple-openmemory",
+  "version": "0.1.0",
+  "description": "Auto memory for OpenCode — port of Claude Code's memory system",
+  "type": "module",
+  "main": "./src/index.js",
+  "keywords": [
+    "opencode",
+    "memory",
+    "plugin"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "@opencode-ai/plugin": "^1.1.35"
+  }
+}
