@@ -9,20 +9,43 @@ const MEMORY_ROOT = path.join(os.homedir(), ".memory")
 export default async (input) => {
   await fs.mkdir(MEMORY_ROOT, { recursive: true })
 
-  const memoryDir = resolveMemoryDir(input.directory, input.worktree)
-  await fs.mkdir(memoryDir, { recursive: true })
+  const projectDir = resolveProjectDir(input.directory, input.worktree)
+  await fs.mkdir(projectDir, { recursive: true })
 
   // Write a mapping file so humans can find which hash belongs to which project
-  await fs.writeFile(path.join(memoryDir, ".project"), input.directory || input.worktree || "unknown").catch(() => {})
+  await fs.writeFile(path.join(projectDir, ".project"), input.directory || input.worktree || "unknown").catch(() => {})
 
-  // Seed MEMORY.md if it doesn't exist
-  const memoryMdPath = path.join(memoryDir, "MEMORY.md")
-  await fs.access(memoryMdPath).catch(() =>
-    fs.writeFile(memoryMdPath, "")
-  )
+  // sessionID → agent name mapping (in-memory, populated by chat hooks)
+  const sessionAgentMap = new Map()
+
+  /**
+   * Ensure an agent-specific memory directory exists and is seeded.
+   */
+  async function ensureAgentMemoryDir(agent) {
+    const memoryDir = agent
+      ? path.join(projectDir, "agents", agent)
+      : projectDir
+    await fs.mkdir(memoryDir, { recursive: true })
+    const memoryMdPath = path.join(memoryDir, "MEMORY.md")
+    await fs.access(memoryMdPath).catch(() =>
+      fs.writeFile(memoryMdPath, "")
+    )
+    return memoryDir
+  }
+
+  // Seed default memory dir for backward compatibility (no agent)
+  await ensureAgentMemoryDir(null)
 
   return {
-    "experimental.chat.system.transform": async (_input, output) => {
+    "chat.message": async (input) => {
+      if (input.sessionID && input.agent) {
+        sessionAgentMap.set(input.sessionID, input.agent)
+      }
+    },
+
+    "experimental.chat.system.transform": async (input, output) => {
+      const agent = input.sessionID ? sessionAgentMap.get(input.sessionID) : undefined
+      const memoryDir = await ensureAgentMemoryDir(agent)
       const memoryMd = await readMemoryMd(memoryDir)
       output.system.push(buildSystemPrompt(memoryDir, memoryMd))
     },
@@ -34,11 +57,8 @@ export default async (input) => {
  * Uses the git worktree root (or project dir) to generate a stable slug,
  * so all worktrees within the same repo share one memory directory.
  */
-function resolveMemoryDir(directory, worktree) {
-  // Prefer directory (project root) over worktree.
-  // worktree can be "/" when not inside a git repo, which is useless.
+function resolveProjectDir(directory, worktree) {
   const root = directory && directory !== "/" ? directory : worktree && worktree !== "/" ? worktree : os.homedir()
-  // Use hash to avoid any word in the path being mangled by auth plugins
   const hash = crypto.createHash("sha256").update(root).digest("hex").slice(0, 12)
   return path.join(MEMORY_ROOT, hash)
 }
