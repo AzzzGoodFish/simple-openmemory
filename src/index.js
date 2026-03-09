@@ -36,22 +36,43 @@ export default async (input) => {
   // Seed default memory dir for backward compatibility (no agent)
   await ensureAgentMemoryDir(null)
 
+  // agent may arrive as Agent.Info object (OpenCode internal type) or string
+  function extractAgentName(agent) {
+    if (!agent) return undefined
+    return typeof agent === "object" ? agent.name : agent
+  }
+
   function captureAgent(sessionID, agent) {
-    if (sessionID && agent) sessionAgentMap.set(sessionID, agent)
+    const name = extractAgentName(agent)
+    if (sessionID && name) sessionAgentMap.set(sessionID, name)
+  }
+
+  // Query the last user message for a session to reliably get the agent name.
+  // createUserMessage() in OpenCode runs before system.transform, so the message
+  // is already in the DB by the time this hook fires.
+  async function resolveAgent(sessionID) {
+    if (!sessionID) return undefined
+    if (sessionAgentMap.has(sessionID)) return sessionAgentMap.get(sessionID)
+    try {
+      const result = await input.client.session.messages({ path: { id: sessionID }, query: { limit: 20 } })
+      const messages = (result.data ?? []).slice().reverse()
+      const lastUser = messages.find((m) => m.role === "user")
+      const name = extractAgentName(lastUser?.agent)
+      if (name) sessionAgentMap.set(sessionID, name)
+      return name
+    } catch {
+      return undefined
+    }
   }
 
   return {
-    // chat.message: agent is optional — may be absent
-    "chat.message": async (input) => {
-      captureAgent(input.sessionID, input.agent)
+    // Best-effort caching from hooks to avoid redundant API calls on subsequent turns
+    "chat.message": async (hookInput) => {
+      captureAgent(hookInput.sessionID, hookInput.agent)
     },
-
-    // chat.params: agent is always present — most reliable source
-    "chat.params": async (input) => {
-      captureAgent(input.sessionID, input.agent)
+    "chat.params": async (hookInput) => {
+      captureAgent(hookInput.sessionID, hookInput.agent)
     },
-
-    // event hook: captures agent from message.updated events as early as possible
     event: async ({ event }) => {
       if (event.type === "message.updated" && event.properties.info.role === "user") {
         const msg = event.properties.info
@@ -59,8 +80,8 @@ export default async (input) => {
       }
     },
 
-    "experimental.chat.system.transform": async (input, output) => {
-      const agent = input.sessionID ? sessionAgentMap.get(input.sessionID) : undefined
+    "experimental.chat.system.transform": async (systemInput, output) => {
+      const agent = await resolveAgent(systemInput.sessionID)
       const memoryDir = await ensureAgentMemoryDir(agent)
       const memoryMd = await readMemoryMd(memoryDir)
       output.system.push(buildSystemPrompt(memoryDir, memoryMd))
