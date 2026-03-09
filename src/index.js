@@ -66,7 +66,6 @@ export default async (input) => {
   }
 
   return {
-    // Best-effort caching from hooks to avoid redundant API calls on subsequent turns
     "chat.message": async (hookInput) => {
       captureAgent(hookInput.sessionID, hookInput.agent)
     },
