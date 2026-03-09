@@ -36,10 +36,26 @@ export default async (input) => {
   // Seed default memory dir for backward compatibility (no agent)
   await ensureAgentMemoryDir(null)
 
+  function captureAgent(sessionID, agent) {
+    if (sessionID && agent) sessionAgentMap.set(sessionID, agent)
+  }
+
   return {
+    // chat.message: agent is optional — may be absent
     "chat.message": async (input) => {
-      if (input.sessionID && input.agent) {
-        sessionAgentMap.set(input.sessionID, input.agent)
+      captureAgent(input.sessionID, input.agent)
+    },
+
+    // chat.params: agent is always present — most reliable source
+    "chat.params": async (input) => {
+      captureAgent(input.sessionID, input.agent)
+    },
+
+    // event hook: captures agent from message.updated events as early as possible
+    event: async ({ event }) => {
+      if (event.type === "message.updated" && event.properties.info.role === "user") {
+        const msg = event.properties.info
+        captureAgent(msg.sessionID, msg.agent)
       }
     },
 
