@@ -20,7 +20,7 @@ If both exist, ask the user which one they want to configure.
 Run:
 
 ```bash
-npm install -g simple-openmemory
+npm install -g github:AzzzGoodFish/simple-openmemory
 ```
 
 ### 2a.2 Update OpenCode config

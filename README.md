@@ -29,6 +29,12 @@ The agent will auto-detect your environment, install the plugin, and optionally 
 
 ### Manual
 
+Install the package globally from GitHub:
+
+```bash
+npm install -g github:AzzzGoodFish/simple-openmemory
+```
+
 Add the plugin to your OpenCode config (`~/.config/opencode/opencode.json`):
 
 ```json
@@ -55,8 +61,15 @@ Or load from a local path during development:
 ~/.memory/
 ├── a1b2c3d4e5f6/          # project directory (hash of project path)
 │   ├── .project           # plain text — maps hash back to original path
-│   ├── MEMORY.md          # main memory file (auto-loaded each session)
-│   ├── patterns.md        # topic files created by the agent
+│   ├── MEMORY.md          # fallback memory (sessions with no agent identifier)
+│   ├── agents/
+│   │   ├── frontend/      # per-agent memory directory
+│   │   │   ├── MEMORY.md
+│   │   │   ├── WORKING.md
+│   │   │   └── ...
+│   │   └── backend/
+│   │       ├── MEMORY.md
+│   │       └── ...
 │   └── ...
 └── 7f8e9d0c1b2a/          # another project
     └── ...
